@@ -1,1 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Postagem Anônima de Fotos</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    img { max-width: 300px; margin: 10px 0; display: block; }
+  </style>
+</head>
+<body>
+  <h1>Postagens Anônimas de Fotos</h1>
+
+  <input type="file" id="fotoInput"><br>
+  <button onclick="enviarFoto()">Enviar Foto</button>
+
+  <hr>
+  <h2>Fotos Enviadas</h2>
+  <div id="fotosContainer"></div>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+  <script>
+    // 🔐 Configurações do seu projeto Supabase
+    const SUPABASE_URL = "https://vsazstyxjsgrgggxfpal.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzYXpzdHl4anNncmdnZ3hmcGFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzQ2MjAsImV4cCI6MjA2MTAxMDYyMH0.O9lHZmcOsFswTprFg3t_mzGid2PSAaRh9qT5VBVHF2E";
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function enviarFoto() {
+      const file = document.getElementById('fotoInput').files[0];
+      if (!file) return alert("Selecione uma imagem!");
+
+      const fileName = Date.now() + '_' + file.name;
+      const { data, error } = await supabase.storage.from('fotos').upload(fileName, file);
+
+      if (error) return alert("Erro ao enviar imagem!");
+
+      const { data: publicUrlData } = supabase.storage.from('fotos').getPublicUrl(fileName);
+      const url = publicUrlData.publicUrl;
+
+      await supabase.from('imagens').insert({ url });
+      alert("Imagem enviada com sucesso!");
+      carregarFotos();
+    }
+
+    async function carregarFotos() {
+      const container = document.getElementById('fotosContainer');
+      container.innerHTML = '';
+
+      const { data, error } = await supabase.from('imagens').select('*').order('created_at', { ascending: false });
+
+      data.forEach(foto => {
+        const img = document.createElement('img');
+        img.src = foto.url;
+        container.appendChild(img);
+      });
+    }
+
+    carregarFotos();
+  </script>
+</body>
+</html>
 
