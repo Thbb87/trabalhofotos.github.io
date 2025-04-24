@@ -2,64 +2,72 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Postagem Anônima de Fotos</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    img { max-width: 300px; margin: 10px 0; display: block; }
-  </style>
+  <title>Envie sua Foto</title>
 </head>
 <body>
-  <h1>Postagens Anônimas de Fotos</h1>
+  <h1>Postagem de Fotos</h1>
+  <input type="file" id="upload" />
+  <button onclick="enviarFoto()">Enviar</button>
+  <div id="galeria"></div>
 
-  <input type="file" id="fotoInput"><br>
-  <button onclick="enviarFoto()">Enviar Foto</button>
-
-  <hr>
-  <h2>Fotos Enviadas</h2>
-  <div id="fotosContainer"></div>
-
-  <!-- Supabase JS -->
+  <!-- Supabase SDK via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
+  <!-- Código precisa estar após o Supabase estar carregado -->
   <script>
-    // 🔐 Configurações do seu projeto Supabase
-    const SUPABASE_URL = "https://vsazstyxjsgrgggxfpal.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzYXpzdHl4anNncmdnZ3hmcGFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzQ2MjAsImV4cCI6MjA2MTAxMDYyMH0.O9lHZmcOsFswTprFg3t_mzGid2PSAaRh9qT5VBVHF2E";
-
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // ⚙️ Inicializa o Supabase
+    const supabaseUrl = "https://vsazstyxjsgrgggxfpal.supabase.co"
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzYXpzdHl4anNncmdnZ3hmcGFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzQ2MjAsImV4cCI6MjA2MTAxMDYyMH0.O9lHZmcOsFswTprFg3t_mzGid2PSAaRh9qT5VBVHF2E"
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey)
 
     async function enviarFoto() {
-      const file = document.getElementById('fotoInput').files[0];
-      if (!file) return alert("Selecione uma imagem!");
+      const fileInput = document.getElementById("upload")
+      const file = fileInput.files[0]
+      if (!file) return alert("Selecione uma imagem!")
 
-      const fileName = Date.now() + '_' + file.name;
-      const { data, error } = await supabase.storage.from('fotos').upload(fileName, file);
+      const nomeArquivo = Date.now() + "-" + file.name
 
-      if (error) return alert("Erro ao enviar imagem!");
+      const { error: uploadError } = await supabase
+        .storage
+        .from("fotos")
+        .upload(nomeArquivo, file)
 
-      const { data: publicUrlData } = supabase.storage.from('fotos').getPublicUrl(fileName);
-      const url = publicUrlData.publicUrl;
+      if (uploadError) {
+        console.error(uploadError)
+        return alert("Erro ao enviar imagem")
+      }
 
-      await supabase.from('imagens').insert({ url });
-      alert("Imagem enviada com sucesso!");
-      carregarFotos();
+      const { data } = supabase.storage.from("fotos").getPublicUrl(nomeArquivo)
+      const url = data.publicUrl
+
+      await supabase.from("imagens").insert({ url })
+
+      carregarFotos()
     }
 
     async function carregarFotos() {
-      const container = document.getElementById('fotosContainer');
-      container.innerHTML = '';
+      const { data, error } = await supabase
+        .from("imagens")
+        .select("*")
+        .order("created_at", { ascending: false })
 
-      const { data, error } = await supabase.from('imagens').select('*').order('created_at', { ascending: false });
+      const galeria = document.getElementById("galeria")
+      galeria.innerHTML = ""
 
-      data.forEach(foto => {
-        const img = document.createElement('img');
-        img.src = foto.url;
-        container.appendChild(img);
-      });
+      if (error) {
+        console.error(error)
+        return
+      }
+
+      data.forEach(img => {
+        const tag = document.createElement("img")
+        tag.src = img.url
+        tag.style = "max-width: 300px; margin: 10px;"
+        galeria.appendChild(tag)
+      })
     }
 
-    carregarFotos();
+    carregarFotos()
   </script>
 </body>
 </html>
-
